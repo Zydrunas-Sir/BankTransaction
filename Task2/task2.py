@@ -27,25 +27,31 @@ def create_table_account():
         cursor.execute(query)
 
 
-def transaction():
+def transaction(transaction_id: int):
     try:
-        query = """ Update account set account.balance =- transactions.amount
-                where account.id = transactions.from_account_id
+        query = """ Update account
+                set account.balance =- transactions.amount
+                where transactions.id = %s
+                and account.id = transactions.from_account_id
                 and account.id is not null and transactions.from_account_id is not null
                 """
-        query1 = """ Update account set account.balance =+ transactions.amount
-                where account.id = transactions.to_account_id
+        parameter = [transaction_id]
+        query1 = """ Update account
+                set account.balance =+ transactions.amount
+                where transactions.id = %s
+                and account.id = transactions.to_account_id
                 and account.id is not null and transactions.to_account_id is not null
                 """
         with DatabaseContextManager() as db:
             cursor = db.cursor()
-            cursor.execute(query, query1)
+            cursor.execute(query, parameter)
+            cursor.execute(query1, parameter)
 
-    except db.connector.Error as error:
+    except Exception as error:
         print("Failed to update record to database rollback: {}".format(error))
         db.rollback()
     finally:
-        if db.is_connected():
+        if db.open:
             db.close()
             print("connection is closed")
 
